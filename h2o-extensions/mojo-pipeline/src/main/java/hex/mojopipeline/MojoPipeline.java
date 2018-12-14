@@ -144,6 +144,7 @@ public class MojoPipeline extends Iced<MojoPipeline> {
           return new MojoChunkConverter(c, col) {
             @Override
             void convertValue(int i, MojoRowBuilder target) {
+              // This is best effort - we might convert the double to an incorrect format (example: 1000 vs 1e3)
               final double val = _c.atd(i);
               target.setString(_col, String.valueOf(val));
             }
@@ -163,13 +164,20 @@ public class MojoPipeline extends Iced<MojoPipeline> {
           }
         };
       case Vec.T_STR:
-        return new MojoChunkConverter(c, col) {
-          @Override
-          void convertValue(int i, MojoRowBuilder target) {
-            // This is best effort - we might convert the double to an incorrect format (example: 1000 vs 1e3)
-            target.setString(_col, _c.atStr(new BufferedString(), i).toString());
-          }
-        };
+        if (type == Type.Str)
+          return new MojoChunkConverter(c, col) {
+            @Override
+            void convertValue(int i, MojoRowBuilder target) {
+              target.setString(_col, _c.atStr(new BufferedString(), i).toString());
+            }
+          };
+        else
+          return new MojoChunkConverter(c, col) {
+            @Override
+            void convertValue(int i, MojoRowBuilder target) {
+              target.setValue(_col, _c.atStr(new BufferedString(), i).toString());
+            }
+          };
       case Vec.T_TIME:
         if (type == Type.Time64)
           return new MojoChunkConverter(c, col) {
